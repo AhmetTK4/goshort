@@ -2,6 +2,9 @@ package main
 
 import (
 	"net/http"
+	"net/url"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/AhmetTK4/goshort/service"
@@ -12,6 +15,17 @@ import (
 
 func main() {
 	storage.InitRedis()
+	defer storage.RDB.Close()
+	if err := newRouter().Run(":8080"); err != nil {
+		panic(err)
+	}
+}
+
+func newRouter() *gin.Engine {
+	baseURL := strings.TrimRight(os.Getenv("BASE_URL"), "/")
+	if baseURL == "" {
+		baseURL = "http://localhost:8080"
+	}
 	r := gin.Default()
 
 	r.Use(cors.New(cors.Config{
@@ -38,11 +52,16 @@ func main() {
 		}
 
 		shortCodeKey := "original:" + request.URL
+		parsed, err := url.ParseRequestURI(request.URL)
+		if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.User != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "URL must be an absolute HTTP or HTTPS URL without credentials"})
+			return
+		}
 
 		existingShortCode, err := storage.RDB.Get(storage.Ctx, shortCodeKey).Result()
 		if err == nil {
 			c.JSON(http.StatusOK, gin.H{
-				"short_url": "http://localhost:8080/g/" + existingShortCode,
+				"short_url": baseURL + "/g/" + existingShortCode,
 			})
 			return
 		}
@@ -62,7 +81,7 @@ func main() {
 		}
 
 		c.JSON(http.StatusOK, gin.H{
-			"short_url": "http://localhost:8080/g/" + shortCode,
+			"short_url": baseURL + "/g/" + shortCode,
 		})
 	})
 
@@ -93,5 +112,5 @@ func main() {
 		})
 	})
 
-	r.Run(":8080")
+	return r
 }
