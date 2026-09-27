@@ -139,3 +139,7 @@ curl -X POST http://localhost:8080/api/shorten \
 ## Author
 
 Made by Ahmet Temel Kundupoğlu - https://github.com/AhmetTK4
+
+## License
+
+[MIT](LICENSE) — Copyright (c) 2026 Ahmet Temel Kundupoğlu.
