@@ -4,6 +4,10 @@ GoShort is a minimal and fast URL shortener service written in Go using the Gin 
 
 ## Features
 
+![GoShort local interface showing a shortened URL](docs/local-demo.png)
+
+Local interface captured against the Go API with a temporary, in-memory Redis-compatible test server. The short link shown is disposable; this is not a hosted production demo.
+
 - Shorten long URLs
 - Redirect short URLs to original ones
 - Track how many times a short URL was clicked
