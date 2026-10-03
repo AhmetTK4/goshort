@@ -85,3 +85,72 @@ func TestUnknownShortCodeReturnsNotFound(t *testing.T) {
 		t.Fatalf("status = %d", response.Code)
 	}
 }
+
+func TestCustomShortCode(t *testing.T) {
+	api := testAPI(t)
+	body := `{"url":"https://example.com/custom","custom_code":"mycode"}`
+	request := httptest.NewRequest(http.MethodPost, "/api/shorten", bytes.NewBufferString(body))
+	request.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+	api.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("custom code: %d %s", response.Code, response.Body)
+	}
+	var created struct {
+		ShortURL string `json:"short_url"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &created); err != nil {
+		t.Fatal(err)
+	}
+	expected := "https://short.example/g/mycode"
+	if created.ShortURL != expected {
+		t.Fatalf("got %s, want %s", created.ShortURL, expected)
+	}
+}
+
+func TestCustomCodeValidation(t *testing.T) {
+	api := testAPI(t)
+	tests := []struct {
+		name string
+		code string
+		want int
+	}{
+		{"too short", "ab", http.StatusBadRequest},
+		{"too long", "abcdefghij1234567890x", http.StatusBadRequest},
+		{"invalid chars", "my-code", http.StatusBadRequest},
+		{"valid", "valid123", http.StatusOK},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			body, _ := json.Marshal(map[string]string{"url": "https://example.com", "custom_code": tc.code})
+			request := httptest.NewRequest(http.MethodPost, "/api/shorten", bytes.NewReader(body))
+			request.Header.Set("Content-Type", "application/json")
+			response := httptest.NewRecorder()
+			api.ServeHTTP(response, request)
+			if response.Code != tc.want {
+				t.Fatalf("status = %d, want %d", response.Code, tc.want)
+			}
+		})
+	}
+}
+
+func TestCustomCodeConflict(t *testing.T) {
+	api := testAPI(t)
+	body := `{"url":"https://example.com/first","custom_code":"conflict"}`
+	request := httptest.NewRequest(http.MethodPost, "/api/shorten", bytes.NewBufferString(body))
+	request.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+	api.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("first request: %d %s", response.Code, response.Body)
+	}
+	
+	body2 := `{"url":"https://example.com/second","custom_code":"conflict"}`
+	request2 := httptest.NewRequest(http.MethodPost, "/api/shorten", bytes.NewBufferString(body2))
+	request2.Header.Set("Content-Type", "application/json")
+	response2 := httptest.NewRecorder()
+	api.ServeHTTP(response2, request2)
+	if response2.Code != http.StatusConflict {
+		t.Fatalf("second request: got %d, want %d", response2.Code, http.StatusConflict)
+	}
+}
