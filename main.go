@@ -43,7 +43,8 @@ func newRouter() *gin.Engine {
 
 	r.POST("/api/shorten", func(c *gin.Context) {
 		var request struct {
-			URL string `json:"url" binding:"required"`
+			URL        string `json:"url" binding:"required"`
+			CustomCode string `json:"custom_code,omitempty"`
 		}
 
 		if err := c.ShouldBindJSON(&request); err != nil {
@@ -66,7 +67,26 @@ func newRouter() *gin.Engine {
 			return
 		}
 
-		shortCode := service.GenerateShortCode(6)
+		var shortCode string
+		if request.CustomCode != "" {
+			if !service.ValidateCustomCode(request.CustomCode) {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Custom code must be 3-20 alphanumeric characters"})
+				return
+			}
+
+			exists, err := storage.RDB.Exists(storage.Ctx, request.CustomCode).Result()
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Redis error"})
+				return
+			}
+			if exists > 0 {
+				c.JSON(http.StatusConflict, gin.H{"error": "Custom code already exists"})
+				return
+			}
+			shortCode = request.CustomCode
+		} else {
+			shortCode = service.GenerateShortCode(6)
+		}
 
 		err = storage.RDB.Set(storage.Ctx, shortCode, request.URL, 1*time.Hour).Err()
 		if err != nil {

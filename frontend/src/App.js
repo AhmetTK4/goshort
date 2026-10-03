@@ -4,6 +4,7 @@ import './App.css';
 
 function App() {
   const [url,setUrl] = useState("");
+  const [customCode, setCustomCode] = useState("");
   const [shortUrl, setShortUrl] = useState("");
   const [clicks, setClicks] = useState(null)
   const [error, setError] = useState("");
@@ -15,14 +16,18 @@ function App() {
     setClicks(null);
     setLoading(true);
     try {
-      const res = await shortenUrl(url);
+      const res = await shortenUrl(url, customCode);
       setShortUrl(res.short_url);
 
       const shortCode = res.short_url.split("/").pop();
       const stats = await getStats(shortCode);
       setClicks(stats.clicks)
     } catch (err) {
-      setError("URL kısaltılamadı. Adresi ve API bağlantısını kontrol edin.");
+      if (err.response?.data?.error) {
+        setError(err.response.data.error);
+      } else {
+        setError("URL kısaltılamadı. Adresi ve API bağlantısını kontrol edin.");
+      }
     } finally {
       setLoading(false);
     }
@@ -32,16 +37,28 @@ function App() {
   return (
     <div style={{ padding: 40 }}>
       <h2>URL Kısaltıcı</h2>
-      <input
-        type="text"
-        aria-label="Kısaltılacak URL"
-        value={url}
-        onChange={(e) => setUrl(e.target.value)}
-        placeholder="URL giriniz"
-        style={{ width: "300px", marginRight: 10 }}
-      />
+      <div style={{ marginBottom: 10 }}>
+        <input
+          type="text"
+          aria-label="Kısaltılacak URL"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="URL giriniz"
+          style={{ width: "300px", marginRight: 10 }}
+        />
+      </div>
+      <div style={{ marginBottom: 10 }}>
+        <input
+          type="text"
+          aria-label="Özel Kod (İsteğe Bağlı)"
+          value={customCode}
+          onChange={(e) => setCustomCode(e.target.value)}
+          placeholder="Özel kod (opsiyonel, 3-20 karakter)"
+          style={{ width: "300px", marginRight: 10 }}
+        />
+      </div>
       <button onClick={handleShorten} disabled={loading || !url.trim()}>{loading ? "Kısaltılıyor..." : "Shorten"}</button>
-      {error && <p role="alert">{error}</p>}
+      {error && <p role="alert" style={{ color: "red" }}>{error}</p>}
 
       {shortUrl && (
         <div style={{ marginTop: 20 }}>

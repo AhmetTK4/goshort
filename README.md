@@ -9,6 +9,7 @@ GoShort is a minimal and fast URL shortener service written in Go using the Gin 
 Local interface captured against the Go API with a temporary, in-memory Redis-compatible test server. The short link shown is disposable; this is not a hosted production demo.
 
 - Shorten long URLs
+- **Custom short codes** - Choose your own memorable short code (3-20 alphanumeric characters)
 - Redirect short URLs to original ones
 - Track how many times a short URL was clicked
 - Docker + Docker Compose ready
@@ -84,14 +85,17 @@ Shortens a long URL.
 Request:
 ```json
 {
-  "url": "https://example.com/very/long/url"
+  "url": "https://example.com/very/long/url",
+  "custom_code": "mycode"
 }
 ```
+
+The `custom_code` parameter is optional. If provided, it must be 3-20 alphanumeric characters. If omitted, a random 6-character code is generated.
 
 Response:
 ```json
 {
-  "short_url": "http://localhost:8080/g/AbC123"
+  "short_url": "http://localhost:8080/g/mycode"
 }
 ```
 
@@ -119,9 +123,15 @@ Response:
 ## Testing with curl
 
 ```bash
+# Shorten with auto-generated code
 curl -X POST http://localhost:8080/api/shorten \
 -H "Content-Type: application/json" \
 -d '{"url": "https://openai.com"}'
+
+# Shorten with custom code
+curl -X POST http://localhost:8080/api/shorten \
+-H "Content-Type: application/json" \
+-d '{"url": "https://openai.com", "custom_code": "openai"}'
 ```
 
 ## Project Structure
